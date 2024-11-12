@@ -89,7 +89,7 @@ bool HOT IRAM_ATTR DHT::read_sensor_(float *temperature, float *humidity, bool r
 #ifdef USE_ESP8266
     delayMicroseconds(500);
 #else
-    delayMicroseconds(400);
+    delayMicroseconds(450);
 #endif
     this->pin_->digital_write(true);
     delayMicroseconds(40);
@@ -110,7 +110,7 @@ bool HOT IRAM_ATTR DHT::read_sensor_(float *temperature, float *humidity, bool r
 #ifdef USE_ESP8266
     delayMicroseconds(70);
 #else
-    delayMicroseconds(35);
+    delayMicroseconds(30);
 #endif
 
     uint8_t bit = 7;

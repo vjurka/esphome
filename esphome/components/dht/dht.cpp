@@ -107,7 +107,7 @@ bool HOT IRAM_ATTR DHT::read_sensor_(float *temperature, float *humidity, bool r
     // Host pull up 20-40us then DHT response 80us
     // Start waiting for initial rising edge at the center when we
     // expect the DHT response (30us+40us)
-    delayMicroseconds(40);
+    delayMicroseconds(35);
 
     uint8_t bit = 7;
     uint8_t byte = 0;

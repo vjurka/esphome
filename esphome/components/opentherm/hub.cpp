@@ -371,11 +371,11 @@ void OpenthermHub::dump_config() {
   ESP_LOGCONFIG(TAG, "  Numbers: %s", SHOW(OPENTHERM_NUMBER_LIST(ID, )));
   ESP_LOGCONFIG(TAG, "  Initial requests:");
   for (auto type : this->initial_messages_) {
-    ESP_LOGCONFIG(TAG, "  - %d", type);
+    ESP_LOGCONFIG(TAG, "  - %d (%s)", type, this->opentherm_->message_id_to_str((type)));
   }
   ESP_LOGCONFIG(TAG, "  Repeating requests:");
   for (auto type : this->repeating_messages_) {
-    ESP_LOGCONFIG(TAG, "  - %d", type);
+    ESP_LOGCONFIG(TAG, "  - %d (%s)", type, this->opentherm_->message_id_to_str((type)));
   }
 }
 

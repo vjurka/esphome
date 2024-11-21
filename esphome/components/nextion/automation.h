@@ -42,5 +42,12 @@ class TouchTrigger : public Trigger<uint8_t, uint8_t, bool> {
   }
 };
 
+class BufferOverflowTrigger : public Trigger<> {
+ public:
+  explicit BufferOverflowTrigger(Nextion *nextion) {
+    nextion->add_buffer_overflow_event_callback([this]() { this->trigger(); });
+  }
+};
+
 }  // namespace nextion
 }  // namespace esphome

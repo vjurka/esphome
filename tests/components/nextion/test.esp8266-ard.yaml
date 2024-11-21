@@ -58,3 +58,6 @@ display:
     on_page:
       then:
         lambda: 'ESP_LOGD("display","Display shows new page %u", x);'
+    on_buffer_overflow:
+      then:
+        logger.log: "Nextion reported a buffer overflow!"

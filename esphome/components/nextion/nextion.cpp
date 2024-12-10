@@ -343,7 +343,7 @@ void Nextion::process_serial_() {
 }
 // nextion.tech/instruction-set/
 void Nextion::process_nextion_commands_() {
-  if (this->command_data_.length() == 0) {
+  if (this->command_data_.empty()) {
     return;
   }
 
@@ -563,13 +563,10 @@ void Nextion::process_nextion_commands_() {
           break;
         }
 
-        int dataindex = 0;
-
         int value = 0;
 
         for (int i = 0; i < 4; ++i) {
           value += to_process[i] << (8 * i);
-          ++dataindex;
         }
 
         NextionQueue *nb = this->nextion_queue_.front();

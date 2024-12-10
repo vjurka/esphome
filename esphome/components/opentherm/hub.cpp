@@ -138,7 +138,7 @@ OpenthermHub::OpenthermHub() : Component(), in_pin_{}, out_pin_{} {}
 void OpenthermHub::process_response(OpenthermData &data) {
   ESP_LOGD(TAG, "Received OpenTherm response with id %d (%s)", data.id,
            this->opentherm_->message_id_to_str((MessageId) data.id));
-  ESP_LOGD(TAG, "%s", this->opentherm_->debug_data(data).c_str());
+  this->opentherm_->debug_data(data);
 
   switch (data.id) {
     OPENTHERM_SENSOR_MESSAGE_HANDLERS(OPENTHERM_MESSAGE_RESPONSE_MESSAGE, OPENTHERM_MESSAGE_RESPONSE_ENTITY, ,
@@ -315,7 +315,7 @@ void OpenthermHub::start_conversation_() {
 
   ESP_LOGD(TAG, "Sending request with id %d (%s)", request.id,
            this->opentherm_->message_id_to_str((MessageId) request.id));
-  ESP_LOGD(TAG, "%s", this->opentherm_->debug_data(request).c_str());
+  this->opentherm_->debug_data(request);
   // Send the request
   this->last_conversation_start_ = millis();
   this->opentherm_->send(request);
@@ -340,19 +340,18 @@ void OpenthermHub::stop_opentherm_() {
   this->opentherm_->stop();
   this->last_conversation_end_ = millis();
 }
-
 void OpenthermHub::handle_protocol_write_error_() {
   ESP_LOGW(TAG, "Error while sending request: %s",
            this->opentherm_->operation_mode_to_str(this->opentherm_->get_mode()));
-  ESP_LOGW(TAG, "%s", this->opentherm_->debug_data(this->last_request_).c_str());
+  this->opentherm_->debug_data(this->last_request_);
 }
-
 void OpenthermHub::handle_protocol_read_error_() {
   OpenThermError error;
   this->opentherm_->get_protocol_error(error);
-  ESP_LOGW(TAG, "Protocol error occured while receiving response: %s", this->opentherm_->debug_error(error).c_str());
+  ESP_LOGW(TAG, "Protocol error occured while receiving response: %s",
+           this->opentherm_->protocol_error_to_to_str(error.error_type));
+  this->opentherm_->debug_error(error);
 }
-
 void OpenthermHub::handle_timeout_error_() {
   ESP_LOGW(TAG, "Receive response timed out at a protocol level");
   this->stop_opentherm_();

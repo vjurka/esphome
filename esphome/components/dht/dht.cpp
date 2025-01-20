@@ -160,8 +160,9 @@ bool HOT IRAM_ATTR DHT::read_sensor_(float *temperature, float *humidity, bool r
       if (bit == 0) {
         bit = 7;
         byte++;
-      } else
+      } else {
         bit--;
+      }
     }
   }
   if (!report_errors && error_code != 0)

@@ -6,6 +6,12 @@ static const char *const TAG = "online_image";
 
 #include "image_decoder.h"
 
+#ifdef USE_ONLINE_IMAGE_BMP_SUPPORT
+#include "bmp_image.h"
+#endif
+#ifdef USE_ONLINE_IMAGE_JPEG_SUPPORT
+#include "jpeg_image.h"
+#endif
 #ifdef USE_ONLINE_IMAGE_PNG_SUPPORT
 #include "png_image.h"
 #endif
@@ -29,6 +35,7 @@ OnlineImage::OnlineImage(const std::string &url, int width, int height, ImageFor
     : Image(nullptr, 0, 0, type, transparency),
       buffer_(nullptr),
       download_buffer_(download_buffer_size),
+      download_buffer_initial_size_(download_buffer_size),
       format_(format),
       fixed_width_(width),
       fixed_height_(height) {
@@ -93,7 +100,35 @@ void OnlineImage::update() {
   }
   ESP_LOGI(TAG, "Updating image %s", this->url_.c_str());
 
-  this->downloader_ = this->parent_->get(this->url_);
+  std::list<http_request::Header> headers = {};
+
+  http_request::Header accept_header;
+  accept_header.name = "Accept";
+  std::string accept_mime_type;
+  switch (this->format_) {
+#ifdef USE_ONLINE_IMAGE_BMP_SUPPORT
+    case ImageFormat::BMP:
+      accept_mime_type = "image/bmp";
+      break;
+#endif  // ONLINE_IMAGE_BMP_SUPPORT
+#ifdef USE_ONLINE_IMAGE_JPEG_SUPPORT
+    case ImageFormat::JPEG:
+      accept_mime_type = "image/jpeg";
+      break;
+#endif  // USE_ONLINE_IMAGE_JPEG_SUPPORT
+#ifdef USE_ONLINE_IMAGE_PNG_SUPPORT
+    case ImageFormat::PNG:
+      accept_mime_type = "image/png";
+      break;
+#endif  // ONLINE_IMAGE_PNG_SUPPORT
+    default:
+      accept_mime_type = "image/*";
+  }
+  accept_header.value = (accept_mime_type + ",*/*;q=0.8").c_str();
+
+  headers.push_back(accept_header);
+
+  this->downloader_ = this->parent_->get(this->url_, headers);
 
   if (this->downloader_ == nullptr) {
     ESP_LOGE(TAG, "Download failed.");
@@ -118,20 +153,34 @@ void OnlineImage::update() {
   ESP_LOGD(TAG, "Starting download");
   size_t total_size = this->downloader_->content_length;
 
+#ifdef USE_ONLINE_IMAGE_BMP_SUPPORT
+  if (this->format_ == ImageFormat::BMP) {
+    ESP_LOGD(TAG, "Allocating BMP decoder");
+    this->decoder_ = make_unique<BmpDecoder>(this);
+  }
+#endif  // ONLINE_IMAGE_BMP_SUPPORT
+#ifdef USE_ONLINE_IMAGE_JPEG_SUPPORT
+  if (this->format_ == ImageFormat::JPEG) {
+    ESP_LOGD(TAG, "Allocating JPEG decoder");
+    this->decoder_ = esphome::make_unique<JpegDecoder>(this);
+  }
+#endif  // USE_ONLINE_IMAGE_JPEG_SUPPORT
 #ifdef USE_ONLINE_IMAGE_PNG_SUPPORT
   if (this->format_ == ImageFormat::PNG) {
-    this->decoder_ = esphome::make_unique<PngDecoder>(this);
+    ESP_LOGD(TAG, "Allocating PNG decoder");
+    this->decoder_ = make_unique<PngDecoder>(this);
   }
 #endif  // ONLINE_IMAGE_PNG_SUPPORT
 
   if (!this->decoder_) {
-    ESP_LOGE(TAG, "Could not instantiate decoder. Image format unsupported.");
+    ESP_LOGE(TAG, "Could not instantiate decoder. Image format unsupported: %d", this->format_);
     this->end_connection_();
     this->download_error_callback_.call();
     return;
   }
   this->decoder_->prepare(total_size);
-  ESP_LOGI(TAG, "Downloading image");
+  ESP_LOGI(TAG, "Downloading image (Size: %d)", total_size);
+  this->start_time_ = ::time(nullptr);
 }
 
 void OnlineImage::loop() {
@@ -145,6 +194,7 @@ void OnlineImage::loop() {
     this->height_ = buffer_height_;
     ESP_LOGD(TAG, "Image fully downloaded, read %zu bytes, width/height = %d/%d", this->downloader_->get_bytes_read(),
              this->width_, this->height_);
+    ESP_LOGD(TAG, "Total time: %lds", ::time(nullptr) - this->start_time_);
     this->end_connection_();
     this->download_finished_callback_.call();
     return;
@@ -155,6 +205,10 @@ void OnlineImage::loop() {
   }
   size_t available = this->download_buffer_.free_capacity();
   if (available) {
+    // Some decoders need to fully download the image before downloading.
+    // In case of huge images, don't wait blocking until the whole image has been downloaded,
+    // use smaller chunks
+    available = std::min(available, this->download_buffer_initial_size_);
     auto len = this->downloader_->read(this->download_buffer_.append(), available);
     if (len > 0) {
       this->download_buffer_.write(len);
